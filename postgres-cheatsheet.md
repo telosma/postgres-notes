@@ -146,7 +146,18 @@ $ source $HOME/.editrc
 
 ## Tips
 - Access database without type password
-Create a `.pgpass` file in the home directory of the account that psql / pg_dump will run as. Content of `.pgpass` like template below:
-  ```
-  hostname:port:database:username:password
-  ```
+
+  Create a `.pgpass` file in the home directory of the account that psql / pg_dump will run as. Content of `.pgpass` like template below:
+    ```
+    hostname:port:database:username:password
+    ```
+
+  Add read/write permissions for only current user
+    ```
+    $ chmod 0600 ~/.pgpass
+    ```
+
+  Now you can access without typing password by
+    ```
+    $ psql -U username -h hostname database
+    ```
