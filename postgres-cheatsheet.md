@@ -161,3 +161,88 @@ $ source $HOME/.editrc
     ```
     $ psql -U username -h hostname database
     ```
+
+## Change data directory
+My postgres version is 8.4 so maybe some config paths / commands in later version are different.
+By default postgres store data in `/var/lib/pgsql/data`
+**Check current config**
+First need to check current config parameters like where config files was stored and where is data directory.
+- login to postgresql user
+  ```
+  $ psql -U postgres_user
+  ```
+
+- show current data directory
+  ```
+  $ show data_directory
+  ```
+  result maybe `/var/lib/pgsql/data`
+
+- show current config_file
+  ```
+  $ show config_file
+  ```
+**stop current postgres service** to make sure data consistency
+  ```
+  $ /etc/inid.d/postgresql stop
+  ```
+
+- Copy current data directory to new data directory
+    - We need to use `rsync` for this action
+    More info about [rsync](https://www.tecmint.com/rsync-local-remote-file-synchronization-commands/)
+    - Use **archive mode** with option `-a` to keep the file mod and `-v` for verbose to check all process log.
+    Because all files in postgres data are owned by *postgres user* so keep ownership to help us avoid some issue relate to *permission*.
+
+    **Note**: when use rsync your folder name have not contain *trailing slash* ("/"), because rsync with take it as sub folder.
+    assume that we need to move data directory to `/data` instead of `/var/lib/`
+    ```
+    $ sudo rsync -av /var/lib/pgsql /data
+    ```
+    - When sync data is finished, we should backup old data folder
+    ```
+    $ sudo mv /var/lib/pgsql/data /var/lib/pgsql/data.bak
+    ```
+**Tell postgresql know about new data folder**
+  - By default data folder was defined by `data_directory` in `/etc/postgresql/data/postgresql.conf`. But we need to follow `config_file` value which we get before.
+  In this case config_file at `/var/lib/pgsql/data/postgresql.conf` but it has just moved to '/data'. So we will edit conf at `/usr/share/pgsql/postgresql.conf`, if it was not existed make a copy from example file. Change *data_directory* in config file like below
+  ```
+  . . .
+  data_directory = '/data/pgsql/data'
+  . . .
+
+  ```
+
+**Restart lại service postgresql**
+```
+$ sudo /etc/inid.d/postgresql restart
+```
+
+**Notes**
+If *postgres.conf* file was located in old data folder and has been moved before so we need to update which was changed at `/etc/inid.d/postgresql`
+- Backup `/etc/inid.d/postgresql`
+```
+$ sudo cp /etc/inid.d/postgresql /etc/inid.d/postgresql.bak
+```
+- Change some config in `/etc/inid.d/postgresql`
+```
+# Set defaults for configuration variables
+#OLD
+PGENGINE=/usr/bin
+PGPORT=5432
+PGDATA=/var/lib/pgsql/data
+PGLOG=/var/lib/pgsql/pgstartup.log
+```
+```
+# Set defaults for configuration variables
+#NEW
+PGENGINE=/usr/bin
+PGPORT=5432
+PGDATA=/data/pgsql/data
+PGLOG=/data/pgsql/pgstartup.log
+```
+When change config done, restart postgresql service
+
+**Check postgresql status**
+Check postgresql service status and database
+Check current config_file and data_directory
+If everything OK we can remove backup data before.
